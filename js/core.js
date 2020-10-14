@@ -183,22 +183,26 @@ document.addEventListener('DOMContentLoaded', () => {
      * TODO: Once done, resolve / reject
      * In case of success, go to another function displaying the number of previews on the page ?
      */
-    function equipNodes(nodes) {
+    function equipNodes(nodes, selfReferDisabled) {
         return new Promise((resolve, reject) => {
             nodes.forEach((node) => {
-                if (node.href) {
+                let cond = selfReferDisabled && (getDomain(link) == getDomain(CURRENT_TAB).toLowerCase());
+                if (node.href && !cond) {
                     dispatcher(node, node.href);
                 }
             });
         });
     }
-
-
+    /* If the script is part of the extension AND
+     * the domain is in disabledSelfReferDomains
+     * then avoid the node
+     */
 
     // If the script is part of the extension
     if ((window.chrome && chrome.runtime && chrome.runtime.id) || chrome) {
-        chrome.storage.local.get(['disabledDomains', 'previewMetadata', 'darkThemeToggle'], function (res) {
+        chrome.storage.local.get(['disabledDomains', 'disabledSelfReferDomains', 'previewMetadata', 'darkThemeToggle'], function (res) {
             let disabledDomains = res.disabledDomains ? res.disabledDomains : ['survol.me'];
+            let selfReferDisabled = res.disabledSelfReferDomains ? res.disabledSelfReferDomains.includes(getDomain(CURRENT_TAB).toLowerCase()) : false;
 
             if (res.previewMetadata === false) {
                 previewMetadata = false;
@@ -210,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!disabledDomains.includes(getDomain(CURRENT_TAB).toLowerCase())) {
                 insertSurvolDiv()
-                    .then(gatherHrefs)
+                    .then(gatherHrefs, selfReferDisabled)
                     .then(equipNodes);
             }
         });
